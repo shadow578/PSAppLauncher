@@ -21,7 +21,14 @@ param (
     #>
     [Parameter()]
     [switch]
-    $NonInteractive
+    $NonInteractive,
+
+    <#
+    enable debug output
+    #>
+    [Parameter()]
+    [switch]
+    $EnableDebug
 )
 
 <#
@@ -170,6 +177,11 @@ function TryShowMessageBox([string] $Title, [string] $Message) {
 main entry point
 #>
 function Main() {
+    # enable debug mode
+    if ($EnableDebug) {
+        $DebugPreference = "Continue"
+    }
+
     # update app if needed
     Write-Debug "checking for app update"
     if (ShouldUpdateApp) {
