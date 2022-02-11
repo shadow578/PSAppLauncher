@@ -32,10 +32,15 @@ param (
 )
 
 <#
+name of the app
+#>
+[string] $AppName = "MyApp"
+
+<#
 The directory the app will be installed to. 
 Expects a full path to the directory
 #>
-[string] $AppInstallDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, "MyApp")
+[string] $AppInstallDir = [System.IO.Path]::Combine($env:LOCALAPPDATA, $AppName)
 
 <#
 The zip file containing the app binary to deploy
@@ -56,6 +61,11 @@ Format is Major.Minor.Build.Revision. Unused version parts should be set to 0
 path to the version info file of the installed app
 #>
 [string] $AppVersionInfoPath = [System.IO.Path]::Combine($AppInstallDir, "app-version.info")
+
+<#
+path to the installation lock file for this app
+#>
+[string] $AppInstallLockPath = [System.IO.Path]::Combine($env:LOCALAPPDATA, "$($AppName).install-lock")
 
 <#
 .SYNOPSIS
@@ -101,6 +111,16 @@ function ShouldUpdateApp() {
 update the app to the deployment version
 #>
 function UpdateApp() {
+    # check lockfile
+    Write-Debug "lockfile is $AppInstallLockPath"
+    if (Test-Path -Path $AppInstallLockPath -PathType Leaf) {
+        throw "lockfile found in $AppInstallLockPath, stopping update"
+        return
+    }
+
+    # create lock
+    New-Item -Path $AppInstallLockPath -ItemType File -ErrorAction Continue | Out-Null
+
     # delete current app install directory
     Write-Debug "removing previous installation"
     Remove-Item -Path $AppInstallDir -Force -Recurse -ErrorAction SilentlyContinue
@@ -115,6 +135,9 @@ function UpdateApp() {
     # write deployment version to version info file
     Write-Debug "write version info to $AppVersionInfoPath"
     $DeployVersion.ToString() | Out-File -FilePath $AppVersionInfoPath
+
+    # remove lock
+    Remove-Item -Path $AppInstallLockPath -ErrorAction Continue
 }
 
 <#
